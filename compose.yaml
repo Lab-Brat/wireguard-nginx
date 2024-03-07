@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  nginx:
+    image: nginx
+    container_name: nginx
+    volumes:
+      - ./nginx/servers/:/etc/nginx/conf.d/
+      - ./nginx/cf_client_certs:/etc/ssl/
+    ports:
+      - "443:443"
+
+  wg-easy:
+    container_name: wg-easy
+    image: ghcr.io/wg-easy/wg-easy
+    environment:
+      - LANG=en
+      - PASSWORD=<strong-password>
+      - WG_HOST=<hostname.com>
+    volumes:
+      - /root/.wg-easy:/etc/wireguard
+    ports:
+      - "51820:51820/udp"
+      - "51821:51821/tcp"
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
