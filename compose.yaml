@@ -16,7 +16,7 @@ services:
     environment:
       - LANG=en
       - PASSWORD=<strong-password>
-      - WG_HOST=<hostname.com>
+      - WG_HOST=hostname.com
     volumes:
       - /root/.wg-easy:/etc/wireguard
     ports:
