@@ -1,0 +1,80 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+  - name: Add Docker repository.
+    yum_repository:
+      file: docker-ce
+      name: docker-ce
+      description: 'Docker CE Stable - $basearch'
+      baseurl: "{{ docker.centos_repo }}"
+      enabled: 1
+      gpgcheck: 1
+      gpgkey: "{{ docker.centos_key }}"
+  
+  - name: Install Docker.
+    yum:
+      name: "{{ item }}"
+      state: latest
+    with_items:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-compose-plugin
+  
+  - name: Start Docker service.
+    service:
+      name: docker
+      state: started
+      enabled: true
+
+  - name: Create a passowrd for wg-easy GUI.
+    set_fact:
+      wg_gui_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20) }}"
+
+  - name: Add env vars to .bashrc.
+    lineinfile:
+      dest: ~/.bashrc
+      line: "{{ item }}"
+    loop:
+      - "export WG_UI_PWD={{ wg_gui_password }}"
+      - "export WG_HOSTNAME={{ wg_hostname }}"
+  
+  - name: Create a directory for Docker compose.
+    file:
+      path: /opt/wireguard
+      state: directory
+      mode: '0755'
+
+  - name: Copy Docker Compose file to new dir.
+    copy:
+      src: files/compose.yaml
+      dest: /opt/wireguard
+  
+  - name: Create a directory for Nginx config.
+    file:
+      path: /root/.nginx/servers/
+      state: directory
+      mode: '0755'
+
+  - name: Copy Nginx config file to new dir.
+    copy:
+      src: files/wg-easy.yaml
+      dest: /root/.nginx/servers/
+
+  - name: Start docker compose file
+    command: docker compose up -d
+    environment: 
+      WG_UI_PWD: "{{ wg_gui_password }}"
+      WG_HOSTNAME" "{{ wg_hostname }}"
+    args:
+      chdir: /opt/wireguard
+
+  - name: Copy config to correct location in Docker.
+    command: "docker exec -it nginx cp /etc/nginx/servers/wg-easy.conf /etc/nginx/conf.d/."
+
+  - name: Generate certificates.
+    command: "docker exec -it nginx certbot --nginx --non-interactive --agree-tos -m webmaster@google.com -d {{ wg_hostname }}"
+
+  - name: Restart Nginx.
+    command: "docker restart nginx"
