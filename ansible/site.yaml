@@ -7,11 +7,11 @@
       file: docker-ce
       name: docker-ce
       description: 'Docker CE Stable - $basearch'
-      baseurl: "{{ docker.centos_repo }}"
+      baseurl: "https://download.docker.com/linux/centos/$releasever/$basearch/stable"
       enabled: 1
       gpgcheck: 1
-      gpgkey: "{{ docker.centos_key }}"
-  
+      gpgkey: "https://download.docker.com/linux/centos/gpg"
+
   - name: Install Docker.
     yum:
       name: "{{ item }}"
@@ -21,7 +21,7 @@
       - docker-ce-cli
       - containerd.io
       - docker-compose-plugin
-  
+
   - name: Start Docker service.
     service:
       name: docker
@@ -38,7 +38,7 @@
       line: "{{ item }}"
     loop:
       - "export WG_UI_PWD={{ wg_gui_password }}"
-      - "export WG_HOSTNAME={{ wg_hostname }}"
+      - "export WG_HOSTNAME={{ inventory_hostname }}"
   
   - name: Create a directory for Docker compose.
     file:

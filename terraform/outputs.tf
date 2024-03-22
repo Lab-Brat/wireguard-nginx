@@ -12,6 +12,7 @@ all:
       ansible_host: ${resource.digitalocean_droplet.wireguard_host.ipv4_address}
       ansible_port: 22
       ansible_user: root
+      ansible_ssh_private_key_file: ${var.do_priv_key} 
       ansible_python_interpreter: /usr/bin/python3
 EOT
 }
