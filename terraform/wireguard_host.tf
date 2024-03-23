@@ -23,3 +23,35 @@ resource "digitalocean_droplet" "wireguard_host" {
       command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../ansible/inventory.yaml ../ansible/site.yaml"
     } 
 }
+
+data "http" "myip" {
+  url = "https://ipv4.icanhazip.com"
+}
+
+output "myip" {
+  value = "${chomp(data.http.myip.response_body)}/32"
+}
+
+resource "digitalocean_firewall" "wireguard" {
+  name = "wireguard-firewall"
+ 
+  droplet_ids = [digitalocean_droplet.wireguard_host.id]
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "22"
+    source_addresses = ["${chomp(data.http.myip.response_body)}/32"]
+  }
+
+  inbound_rule {
+    protocol         = "tcp"
+    port_range       = "51821"
+    source_addresses = ["${chomp(data.http.myip.response_body)}/32"]
+  }
+
+  inbound_rule {
+    protocol         = "udp"
+    port_range       = "51820"
+    source_addresses = ["0.0.0.0/0"]
+  }
+}

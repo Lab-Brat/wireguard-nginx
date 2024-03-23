@@ -9,5 +9,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.5.1"
     }
+
+    http = {
+      source  = "hashicorp/http"
+      version = " ~> 3.4.2 "
+    }
   }
 }
