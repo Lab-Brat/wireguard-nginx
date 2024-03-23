@@ -10,26 +10,10 @@ resource "digitalocean_droplet" "wireguard_host" {
     ssh_keys = [
       data.digitalocean_ssh_key.self.id
     ]
-
-    connection {
-      host = self.ipv4_address
-      user = "root"
-      type = "ssh"
-      private_key = file(var.do_priv_key)
-      timeout = "2m"
-    }
-
-    provisioner "local-exec" {
-      command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../ansible/inventory.yaml ../ansible/site.yaml"
-    } 
 }
 
 data "http" "myip" {
   url = "https://ipv4.icanhazip.com"
-}
-
-output "myip" {
-  value = "${chomp(data.http.myip.response_body)}/32"
 }
 
 resource "digitalocean_firewall" "wireguard" {
@@ -53,5 +37,28 @@ resource "digitalocean_firewall" "wireguard" {
     protocol         = "udp"
     port_range       = "51820"
     source_addresses = ["0.0.0.0/0"]
+  }
+  inbound_rule {
+    protocol         = "icmp"
+    port_range       = "1-65535"
+    source_addresses = ["0.0.0.0/0"]
+  }
+
+  outbound_rule {
+    protocol         = "tcp"
+    port_range       = "1-65535"
+    destination_addresses = ["0.0.0.0/0"]
+  }
+
+  outbound_rule {
+    protocol         = "udp"
+    port_range       = "1-65535"
+    destination_addresses = ["0.0.0.0/0"]
+  }
+
+  outbound_rule {
+    protocol         = "icmp"
+    port_range       = "1-65535"
+    destination_addresses = ["0.0.0.0/0"]
   }
 }
