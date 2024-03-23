@@ -8,6 +8,11 @@ variable "wg_hostname" {
     type        = string
 }
 
+variable "wg_ui_password" {
+    description = "Password for the wg-easy UI"
+    type        = string
+}
+
 variable "do_pub_key" {
     description = "Path to public SSH key"
     default     = "~/.ssh/self.pub"

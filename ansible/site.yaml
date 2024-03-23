@@ -67,17 +67,18 @@
 
     - name: Configure wg-easy.
       block:
-        - name: Create a passowrd for wg-easy GUI.
-          ansible.builtin.set_fact:
-            wg_gui_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20) }}"
+        - name: Include variables.
+          ansible.builtin.include_vars:
+            file: vars.yaml
+            name: wg_vars
 
         - name: Add env vars to .bashrc.
           ansible.builtin.lineinfile:
             dest: ~/.bashrc
             line: "{{ item }}"
           loop:
-            - "export WG_UI_PWD={{ wg_gui_password }}"
-            - "export WG_HOSTNAME={{ inventory_hostname }}"
+            - "export WG_HOSTNAME={{ wg_vars.wg_hostname }}"
+            - "export WG_UI_PWD={{ wg_vars.wg_ui_password }}"
 
         - name: Create a directory for Docker compose.
           ansible.builtin.file:
@@ -107,17 +108,17 @@
             group: root
             mode: '0644'
 
-        - name: Start docker compose file
+        - name: Start Docker Compose.
           ansible.builtin.command: docker compose up -d
           environment: 
-            WG_UI_PWD: "{{ wg_gui_password }}"
-            WG_HOSTNAME: "{{ inventory_hostname }}"
+            WG_UI_PWD: "{{ wg_vars.wg_ui_password }}"
+            WG_HOSTNAME: "{{ wg_vars.wg_hostname }}"
           args:
             chdir: /opt/wireguard
 
         - name: Check if the certificate is valid.
           ansible.builtin.uri:
-            url: https://{{ inventory_hostname }}
+            url: https://{{ wg_vars.wg_hostname }}
             method: HEAD
           register: cert_status
           ignore_errors: yes
@@ -131,7 +132,7 @@
         - name: Generate certificates.
           ansible.builtin.command: >
             docker exec -it nginx
-            certbot --nginx --non-interactive --agree-tos -m webmaster@google.com -d {{ inventory_hostname }}
+            certbot --nginx --non-interactive --agree-tos -m webmaster@google.com -d {{ wg_vars.wg_hostname }}
 
         - name: Restart Nginx.
           ansible.builtin.command: >

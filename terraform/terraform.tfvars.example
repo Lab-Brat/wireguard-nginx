@@ -2,5 +2,6 @@ do_api_key = <DIGITAL_OCEAN_API_TOKEN>
 do_pub_key = <PATH_TO_PUBLIC_SSH_KEY>
 do_priv_key = <PATH_TO_PRIVATE_SSH_KEY>
 wg_hostname = <WIREGUARD_UI_HOSTNAME>
+wg_ui_password = <WIREGUARD_UI_PASSWORD>
 cloudflare_api_token = <CLOUDFLARE_API_TOKEN>
 cloudflare_zone_id = <CLOUDFLARE_ZONE_NAME>
