@@ -2,79 +2,128 @@
 - hosts: all
   become: yes
   tasks:
-  - name: Add Docker repository.
-    ansible.builtin.yum_repository:
-      file: docker-ce
-      name: docker-ce
-      description: 'Docker CE Stable - $basearch'
-      baseurl: "https://download.docker.com/linux/centos/$releasever/$basearch/stable"
-      enabled: 1
-      gpgcheck: 1
-      gpgkey: "https://download.docker.com/linux/centos/gpg"
+    - name: Prepare system pacakges.
+      block:
+        - name: Remove cockpit packages.
+          ansible.builtin.dnf:
+            name: "{{ item}}"
+            state: absent
+          with_items:
+            - cockpit-bridge
+            - cockpit-ws
+            - cockpit-system
 
-  - name: Install Docker.
-    ansible.builtin.dnf:
-      name: "{{ item }}"
-      state: latest
-    with_items:
-      - docker-ce
-      - docker-ce-cli
-      - containerd.io
-      - docker-compose-plugin
+        - name: Load ip_tables kernel module.
+          community.general.modprobe:
+            name: ip_tables
+            state: present
 
-  - name: Start Docker service.
-    ansible.builtin.service:
-      name: docker
-      state: started
-      enabled: true
+        - name: Create kernel modules config file.
+          ansible.builtin.file:
+            path: /etc/modules
+            state: touch
 
-  - name: Create a passowrd for wg-easy GUI.
-    ansible.builtin.set_fact:
-      wg_gui_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20) }}"
+        - name: Make sure ip_tables module is loaded on boot.
+          ansible.builtin.lineinfile:
+            path: /etc/modules
+            line: ip_tables
 
-  - name: Add env vars to .bashrc.
-    ansible.builtin.lineinfile:
-      dest: ~/.bashrc
-      line: "{{ item }}"
-    loop:
-      - "export WG_UI_PWD={{ wg_gui_password }}"
-      - "export WG_HOSTNAME={{ inventory_hostname }}"
-  
-  - name: Create a directory for Docker compose.
-    ansible.builtin.file:
-      path: /opt/wireguard
-      state: directory
-      mode: '0755'
+        - name: Update all packages.
+          ansible.builtin.dnf:
+            name: '*'
+            state: latest
+          notify: Reboot host and wait for it to restart.
 
-  - name: Copy Docker Compose file to new dir.
-    ansible.builtin.copy:
-      src: files/compose.yaml
-      dest: /opt/wireguard
-  
-  - name: Create a directory for Nginx config.
-    ansible.builtin.file:
-      path: /root/.nginx/servers/
-      state: directory
-      mode: '0755'
+        - name: Flush handlers.
+          ansible.builtin.meta: flush_handlers
 
-  - name: Copy Nginx config file to new dir.
-    ansible.builtin.copy:
-      src: files/wg-easy.yaml
-      dest: /root/.nginx/servers/
+    - name: Install Docker.
+      block:
+        - name: Add Docker repository.
+          ansible.builtin.yum_repository:
+            file: docker-ce
+            name: docker-ce
+            description: 'Docker CE Stable - $basearch'
+            baseurl: "https://download.docker.com/linux/centos/$releasever/$basearch/stable"
+            enabled: 1
+            gpgcheck: 1
+            gpgkey: "https://download.docker.com/linux/centos/gpg"
 
-  - name: Start docker compose file
-    ansible.builtin.command: docker compose up -d
-    environment: 
-      WG_UI_PWD: "{{ wg_gui_password }}"
-      WG_HOSTNAME: "{{ wg_hostname }}"
-    args:
-      chdir: /opt/wireguard
+        - name: Install Docker.
+          ansible.builtin.dnf:
+            name: "{{ item }}"
+            state: latest
+          with_items:
+            - docker-ce
+            - docker-ce-cli
+            - containerd.io
+            - docker-compose-plugin
 
-  - name: Copy config to correct location in Docker.
-    ansible.builtin.command: "docker exec -it nginx cp /etc/nginx/servers/wg-easy.conf /etc/nginx/conf.d/."
+        - name: Start Docker service.
+          ansible.builtin.service:
+            name: docker
+            state: started
+            enabled: true
 
-  - name: Generate certificates.
-    ansible.builtin.command: "docker exec -it nginx certbot --nginx --non-interactive --agree-tos -m webmaster@google.com -d {{ wg_hostname }}"
+    - name: Configure wg-easy.
+      block:
+        - name: Create a passowrd for wg-easy GUI.
+          ansible.builtin.set_fact:
+            wg_gui_password: "{{ lookup('ansible.builtin.password', '/dev/null', length=20) }}"
 
-  - name: Restart Nginx.
-    ansible.builtin.command: "docker restart nginx"
+        - name: Add env vars to .bashrc.
+          ansible.builtin.lineinfile:
+            dest: ~/.bashrc
+            line: "{{ item }}"
+          loop:
+            - "export WG_UI_PWD={{ wg_gui_password }}"
+            - "export WG_HOSTNAME={{ inventory_hostname }}"
+
+        - name: Create a directory for Docker compose.
+          ansible.builtin.file:
+            path: /opt/wireguard
+            state: directory
+            mode: '0755'
+
+        - name: Copy Docker Compose file to new dir.
+          ansible.builtin.copy:
+            src: files/compose.yaml
+            dest: /opt/wireguard
+
+        - name: Create a directory for Nginx config.
+          ansible.builtin.file:
+            path: /root/.nginx/servers/
+            state: directory
+            mode: '0755'
+
+        - name: Copy Nginx config file to new dir.
+          ansible.builtin.copy:
+            src: files/wg-easy.yaml
+            dest: /root/.nginx/servers/
+
+        - name: Start docker compose file
+          ansible.builtin.command: docker compose up -d
+          environment: 
+            WG_UI_PWD: "{{ wg_gui_password }}"
+            WG_HOSTNAME: "{{ wg_hostname }}"
+          args:
+            chdir: /opt/wireguard
+
+        - name: Copy config to correct location in Docker.
+          ansible.builtin.command: "docker exec -it nginx cp /etc/nginx/servers/wg-easy.conf /etc/nginx/conf.d/."
+
+        - name: Generate certificates.
+          ansible.builtin.command: "docker exec -it nginx certbot --nginx --non-interactive --agree-tos -m webmaster@google.com -d {{ wg_hostname }}"
+
+        - name: Restart Nginx.
+          ansible.builtin.command: "docker restart nginx"
+
+  handlers:
+    - name: Reboot host and wait for it to restart.
+      ansible.builtin.reboot:
+        msg: "Reboot initiated by Ansible"
+        connect_timeout: 5
+        reboot_timeout: 200
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: whoami
