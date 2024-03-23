@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   wg-easy:
     environment:
@@ -12,6 +10,7 @@ services:
       - ~/.wg-easy:/etc/wireguard
     ports:
       - "51820:51820/udp"
+      - "127.0.0.1:51821:51821/tcp"
     restart: unless-stopped
     cap_add:
       - NET_ADMIN
@@ -25,8 +24,8 @@ services:
     container_name: nginx
     hostname: nginx
     volumes:
-      - ~/.nginx/servers/:/etc/nginx/servers/
-      - ./.nginx/letsencrypt/:/etc/letsencrypt/
+      - /opt/wireguard/nginx/wg-easy.conf:/etc/nginx/conf.d/wg-easy.conf
+      - /opt/wireguard/letsencrypt/:/etc/letsencrypt/
     ports:
       - "80:80/tcp"
       - "443:443/tcp"

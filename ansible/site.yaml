@@ -90,33 +90,53 @@
             src: files/compose.yaml
             dest: /opt/wireguard
 
-        - name: Create a directory for Nginx config.
+        - name: Create a directory for Nginx configs.
           ansible.builtin.file:
-            path: /root/.nginx/servers/
+            path: "{{ item }}"
             state: directory
             mode: '0755'
+          with_items:
+            - /opt/wireguard/nginx
+            - /opt/wireguard/letsencrypt
 
-        - name: Copy Nginx config file to new dir.
-          ansible.builtin.copy:
-            src: files/wg-easy.yaml
-            dest: /root/.nginx/servers/
+        - name: Template nginx config.
+          ansible.builtin.template:
+            src: templates/wg-easy.conf.j2
+            dest: /opt/wireguard/nginx/wg-easy.conf
+            owner: root
+            group: root
+            mode: '0644'
 
         - name: Start docker compose file
           ansible.builtin.command: docker compose up -d
           environment: 
             WG_UI_PWD: "{{ wg_gui_password }}"
-            WG_HOSTNAME: "{{ wg_hostname }}"
+            WG_HOSTNAME: "{{ inventory_hostname }}"
           args:
             chdir: /opt/wireguard
 
-        - name: Copy config to correct location in Docker.
-          ansible.builtin.command: "docker exec -it nginx cp /etc/nginx/servers/wg-easy.conf /etc/nginx/conf.d/."
+        - name: Check if the certificate is valid.
+          ansible.builtin.uri:
+            url: https://{{ inventory_hostname }}
+            method: HEAD
+          register: cert_status
+          ignore_errors: yes
 
+        - name: Show cert status.
+          ansible.builtin.debug:
+            var: cert_status
+
+    - name: Install TCL cert.
+      block:
         - name: Generate certificates.
-          ansible.builtin.command: "docker exec -it nginx certbot --nginx --non-interactive --agree-tos -m webmaster@google.com -d {{ wg_hostname }}"
+          ansible.builtin.command: >
+            docker exec -it nginx
+            certbot --nginx --non-interactive --agree-tos -m webmaster@google.com -d {{ inventory_hostname }}
 
         - name: Restart Nginx.
-          ansible.builtin.command: "docker restart nginx"
+          ansible.builtin.command: >
+            docker restart nginx
+      when: cert_status.failed
 
   handlers:
     - name: Reboot host and wait for it to restart.
