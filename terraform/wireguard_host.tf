@@ -62,3 +62,15 @@ resource "digitalocean_firewall" "wireguard" {
     destination_addresses = ["0.0.0.0/0"]
   }
 }
+
+data "cloudflare_zone" "zone" {
+  name = var.cloudflare_zone_id
+}
+
+resource "cloudflare_record" "in_a" {
+  zone_id = data.cloudflare_zone.zone.id
+  name    = var.wg_hostname
+  value   = resource.digitalocean_droplet.wireguard_host.ipv4_address
+  type    = "A"
+  proxied = false
+}

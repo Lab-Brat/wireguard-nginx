@@ -19,3 +19,13 @@ variable "do_priv_key" {
     default     = "~/.ssh/self"
     type        = string
 }
+
+variable "cloudflare_api_token" {
+  description = "The API Token for domain in Cloudflare"
+  type        = string
+}
+
+variable "cloudflare_zone_id" {
+   description = "Cloudflare DNS Zone name" 
+   type        = string
+}
