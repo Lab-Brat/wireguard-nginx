@@ -29,8 +29,8 @@ resource "digitalocean_firewall" "wireguard" {
 
   inbound_rule {
     protocol         = "tcp"
-    port_range       = "51821"
-    source_addresses = ["${chomp(data.http.myip.response_body)}/32"]
+    port_range       = "443"
+    source_addresses = ["0.0.0.0/0"]
   }
 
   inbound_rule {
@@ -38,6 +38,7 @@ resource "digitalocean_firewall" "wireguard" {
     port_range       = "51820"
     source_addresses = ["0.0.0.0/0"]
   }
+  
   inbound_rule {
     protocol         = "icmp"
     port_range       = "1-65535"
