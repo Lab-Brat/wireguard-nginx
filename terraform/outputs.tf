@@ -22,8 +22,8 @@ resource "local_file" "ansible_inventory" {
   filename             = "../ansible/inventory.yaml"
   directory_permission = "0750"
   file_permission      = "0640"
-}
 
-output "ansible_inventory" {
-  value = local.inventory
+  provisioner "local-exec" {
+    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../ansible/inventory.yaml ../ansible/site.yaml"
+  } 
 }
