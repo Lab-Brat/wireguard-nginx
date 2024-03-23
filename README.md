@@ -1,29 +1,35 @@
 # Wireguard + Nginx
 
-Configuration files for [wg-easy](https://github.com/wg-easy/wg-easy) installation with Nginx reverse proxy.
+Configuration files for [wg-easy](https://github.com/wg-easy/wg-easy) installation with Nginx reverse proxy.  
 
 
-Directory structure
-```
-├── compose.yaml
-└── nginx
-    ├── cf_client_certs
-    │   ├── cloudflare.pem
-    │   ├── hostname.com_cert.pem
-    │   └── hostname.com_key.pem
-    └── servers
-        └── hostname.com.conf
+### Deployment steps
+
+#### Step 1
+Install Ansible in the virtual environment:
+```shell
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
 
-Obtain TLS certificates from Cloudflare or Letsencrypt and place them in `cf_client_certs`,
-update password in `compose.yaml`, then change hostnames everywhere:
-```
-# for example, if wireguard hostname is wg.company.com
-for f in compose.yaml nginx/servers/hostname.com.conf ; do sed -i 's/hostname.com/wg.company.com/g' $f; done
-mv nginx/servers/hostname.com.conf nginx/servers/wg.company.com.conf
+Note that virtual environment should be avtive during terraform run.  
+
+
+#### Step 2
+Create a file with variables:
+```shell
+cd terraform
+cp terraform.tfvars.example terraform.tfvars
 ```
 
-and run containers:
-```
-docker compose up -d
+Then go to DigitalOcean and Cloudflare to generate API tokens that will be used by Terraform.  
+
+
+#### Step 3
+Instantiate providers and launch Terraform:
+```shell
+terraform init
+terraform plan -out .terraform.plan.zip
+terraform apply .terraform.plan.zip
 ```
