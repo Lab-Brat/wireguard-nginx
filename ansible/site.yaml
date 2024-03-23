@@ -17,16 +17,7 @@
           community.general.modprobe:
             name: ip_tables
             state: present
-
-        - name: Create kernel modules config file.
-          ansible.builtin.file:
-            path: /etc/modules
-            state: touch
-
-        - name: Make sure ip_tables module is loaded on boot.
-          ansible.builtin.lineinfile:
-            path: /etc/modules
-            line: ip_tables
+            persistent: present
 
         - name: Update all packages.
           ansible.builtin.dnf:

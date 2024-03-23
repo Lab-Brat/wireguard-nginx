@@ -37,6 +37,6 @@ resource "local_file" "ansible_inventory" {
   file_permission      = "0640"
 
   provisioner "local-exec" {
-    command = "ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../ansible/inventory.yaml ../ansible/site.yaml"
+    command = "sleep 60 && ANSIBLE_HOST_KEY_CHECKING=False ansible-playbook -i ../ansible/inventory.yaml ../ansible/site.yaml"
   } 
 }
